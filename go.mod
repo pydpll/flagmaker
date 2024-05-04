@@ -1,4 +1,4 @@
-module test
+module github.com/pydpll/flagmaker
 
 go 1.22.0
 
