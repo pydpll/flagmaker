@@ -1,4 +1,4 @@
-package main
+package flagmaker
 
 import (
 	"fmt"
@@ -9,7 +9,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/pydpll/errorutils"
 )
 
 const maxWidth = 80
