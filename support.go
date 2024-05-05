@@ -11,9 +11,10 @@ import (
 // STYLING
 
 type keyMap struct {
-	up       key.Binding
-	down     key.Binding
-	quitKeys key.Binding
+	up           key.Binding
+	down         key.Binding
+	quitKeys     key.Binding
+	interruptKey key.Binding
 }
 
 type styles struct {
@@ -71,7 +72,7 @@ func newStyles(lg *lipgloss.Renderer) *styles {
 	return &s
 }
 
-var Km = keyMap{
+var km = keyMap{
 	up: key.NewBinding(
 		key.WithKeys("k"),
 		key.WithHelp("↑/k", "move up"),
@@ -81,15 +82,21 @@ var Km = keyMap{
 		key.WithHelp("↓/j", "move down"),
 	),
 	quitKeys: key.NewBinding(
-		key.WithKeys("q", "esc", "ctrl+c"),
+		key.WithKeys("q", "esc"),
 		key.WithHelp("", "press q to quit"),
+	),
+	interruptKey: key.NewBinding(
+		key.WithKeys("ctrl+c"),
 	),
 }
 
 // LAYOUT
 
 func (m model) headerView() string {
-	title := titleStyle.Render("Mr. Pager")
+	//split m.documentation slice into two parts, first line will be the title and the rest will be the rest
+	parts := strings.SplitN(*m.documentation, "\n", 2)
+	m.documentation = &parts[1]
+	title := titleStyle.Render(parts[0])
 	line := strings.Repeat("─", max(0, m.viewport.Width-lipgloss.Width(title)))
 	return lipgloss.JoinHorizontal(lipgloss.Center, title, line)
 }
