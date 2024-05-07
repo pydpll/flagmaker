@@ -199,7 +199,7 @@ func Interact(nFo func() *huh.Form, doc *string, invalid func() bool) error {
 			err := huh.NewConfirm().
 				Negative("yes, stop exec").
 				Affirmative("I didn't mean to, take me back").
-				Description("missing valid selections, did you toggle all programs off?").
+				Description("missing valid selections").
 				Value(&retry).Run()
 			errorutils.ExitOnFail(err)
 			if retry {
