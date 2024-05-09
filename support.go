@@ -93,10 +93,7 @@ var km = keyMap{
 // LAYOUT
 
 func (m model) headerView() string {
-	//split m.documentation slice into two parts, first line will be the title and the rest will be the rest
-	parts := strings.SplitN(*m.documentation, "\n", 2)
-	m.documentation = &parts[1]
-	title := titleStyle.Render(parts[0])
+	title := titleStyle.Render(m.title)
 	line := strings.Repeat("─", max(0, m.viewport.Width-lipgloss.Width(title)))
 	return lipgloss.JoinHorizontal(lipgloss.Center, title, line)
 }

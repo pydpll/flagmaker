@@ -1,11 +1,15 @@
-// This library offers quick form handling for user facing workflows. Using the power of huh.Form, it makes it easy to display forms to the user and gather input. The forms must have embedded pointer values for each field to have access to the result. Calling the Interact function requires a function that generates the form, a pointer to the documentation string, and a closure that checks if the saved values are valid.
+// This library offers quick form handling for user facing workflows. Using the power of huh.Form, it makes it easy to display forms to the user and gather input. The forms must have embedded pointer values for each field to have access to the result. Calling the Interact function requires a function that generates the form, a pointer to the documentation string, a reference to the output device `$(tty)` and a closure that checks if the saved values are valid.
 package flagmaker
 
 /*
 TODO: Set colours
+TODO: set hight of viewport to fit window
+TODO: set width of both columns more deliberately
 */
+
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -17,15 +21,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const maxWidth = 80
+const maxWidth = 100
 
 type errMsg error
 
 type model struct {
 	// user sets these
-	documentation *string
+	documentation string
 	form          *huh.Form
 	err           *error
+	title         string // generated from first line of documentation
 	// internals
 	viewport viewport.Model
 	width    int
@@ -42,12 +47,14 @@ func (m model) isQuitting() bool {
 }
 
 func initialModel(f *huh.Form, d *string, e *error) model {
+	parts := strings.SplitN(*d, "\n", 2)
 	m := model{
 		form: f.
 			WithWidth(45).
 			WithShowHelp(false).
 			WithShowErrors(false),
-		documentation: d,
+		title:         parts[0],
+		documentation: parts[1],
 		width:         maxWidth,
 		lg:            lipgloss.DefaultRenderer(),
 		err:           e,
@@ -108,9 +115,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		footerHeight := lipgloss.Height(m.footerView())
 		verticalMarginHeight := headerHeight + footerHeight
 		if !m.vReady {
-			m.viewport = viewport.New(msg.Width-28, msg.Height-verticalMarginHeight-8)
+			m.viewport = viewport.New(msg.Width-88, msg.Height-verticalMarginHeight-8)
 			m.viewport.YPosition = headerHeight
-			m.viewport.SetContent(*m.documentation)
+			m.viewport.SetContent(m.documentation)
 			m.vReady = true
 			m.viewport.YPosition = headerHeight + 1
 		} else {
@@ -154,7 +161,7 @@ func (m model) View() string {
 	}
 	docPanel := fmt.Sprintf("%s\n%s\n%s", m.headerView(), m.viewport.View(), m.footerView())
 	errors := m.form.Errors()
-	header := m.appBoundaryView("tester package")
+	header := m.appBoundaryView("workflow options")
 	if len(errors) > 0 {
 		header = m.appErrorBoundaryView(m.errorView())
 	}
@@ -168,9 +175,10 @@ func (m model) View() string {
 	return m.styles.Base.Render(header + "\n" + body + "\n\n" + footer)
 }
 
-func new(f *huh.Form, d *string, e *error) *tea.Program {
-
-	return tea.NewProgram(initialModel(f, d, e), tea.WithAltScreen())
+func new(f *huh.Form, d *string, e *error, output string) *tea.Program {
+	tty, errf := os.OpenFile(output, os.O_WRONLY, 0)
+	errorutils.ExitOnFail(errf)
+	return tea.NewProgram(initialModel(f, d, e), tea.WithOutput(tty), tea.WithAltScreen())
 }
 
 // Interact is a function that interacts with the user through a form.
@@ -181,14 +189,14 @@ func new(f *huh.Form, d *string, e *error) *tea.Program {
 // - invalid: a function that validates the linked values of the form.
 //
 // It returns an error.
-func Interact(nFo func() *huh.Form, doc *string, invalid func() bool) error {
+func Interact(nFo func() *huh.Form, doc *string, invalid func() bool, tty string) error {
 	var (
 		retry bool = true
 		err1  error
 	)
 
 	for retry && err1 == nil {
-		_, err := new(nFo(), doc, &err1).Run()
+		_, err := new(nFo(), doc, &err1, tty).Run()
 		errorutils.ExitOnFail(err)
 		if err1 != nil && err1.Error() == "interrupt" {
 			return errorutils.NewReport("user cancelled", "abc")
@@ -211,7 +219,6 @@ func Interact(nFo func() *huh.Form, doc *string, invalid func() bool) error {
 	}
 	if err1 != nil && err1.Error() == "interrupt" {
 		return errorutils.NewReport("user cancelled", "xyz")
-
 	}
 	return nil
 }
