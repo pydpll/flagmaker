@@ -5,6 +5,9 @@ package flagmaker
 TODO: Set colours
 TODO: set hight of viewport to fit window
 TODO: set width of both columns more deliberately
+TODO: Follow execution bug https://github.com/charmbracelet/bubbletea/issues/860 for
+      	command substitution rendering and use.
+
 */
 
 import (
@@ -204,11 +207,19 @@ func Interact(nFo func() *huh.Form, doc *string, invalid func() bool, tty string
 			retry = false
 		}
 		if invalid() {
-			err := huh.NewConfirm().
-				Negative("yes, stop exec").
-				Affirmative("I didn't mean to, take me back").
-				Description("missing valid selections").
-				Value(&retry).Run()
+			output, errf := os.OpenFile(tty, os.O_WRONLY, 0)
+			errorutils.ExitOnFail(errf)
+			formCheck := huh.NewForm(
+				huh.NewGroup(
+					huh.NewConfirm().
+						Negative("yes, stop exec").
+						Affirmative("I didn't mean to, take me back").
+						Description("missing valid selections").
+						Value(&retry),
+				))
+			err := formCheck.WithProgramOptions(
+				tea.WithOutput(output),
+			).Run()
 			errorutils.ExitOnFail(err)
 			if retry {
 				err1 = nil
